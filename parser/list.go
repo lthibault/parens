@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -66,6 +67,21 @@ func (le ListExpr) String() string {
 	}
 
 	return fmt.Sprintf("(%s)", strings.Join(reprs, " "))
+}
+
+// Symbol asserts first item in the list to be a symbol and returns
+// the symbol. If the first item is not a symbol, returns error.
+func (le ListExpr) Symbol() (string, error) {
+	if len(le.List) == 0 {
+		return "", errors.New("empty list")
+	}
+
+	sym, ok := le.List[0].(SymbolExpr)
+	if !ok {
+		return "", errors.New("not a symbol")
+	}
+
+	return sym.Symbol, nil
 }
 
 func buildListExpr(tokens *tokenQueue) (Expr, error) {
