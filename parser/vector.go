@@ -2,9 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"io"
 	"strings"
-
-	"github.com/spy16/parens/lexer"
 )
 
 // VectorExpr represents a vector form.
@@ -36,26 +35,32 @@ func (ve VectorExpr) String() string {
 	return fmt.Sprintf("[%s]", strings.Join(strs, " "))
 }
 
-func buildVectorExpr(tokens *tokenQueue) (Expr, error) {
-	ve := VectorExpr{}
+func buildVectorExpr(rd io.RuneScanner) (Expr, error) {
+	if err := assertPrefix(rd, '['); err != nil {
+		return nil, err
+	}
 
+	vals := []Expr{}
 	for {
-		next := tokens.Token(0)
-		if next == nil {
-			return nil, ErrEOF
-		}
-		if next.Type == lexer.RVECT {
-			break
-		}
-		exp, err := buildExpr(tokens)
+		ru, _, err := rd.ReadRune()
 		if err != nil {
 			return nil, err
 		}
 
-		if exp != nil {
-			ve.List = append(ve.List, exp)
+		if ru == ']' {
+			break
+		}
+		rd.UnreadRune()
+
+		expr, err := buildExpr(rd)
+		if err != nil {
+			return nil, err
+		}
+
+		if expr != nil {
+			vals = append(vals, expr)
 		}
 	}
-	tokens.Pop()
-	return ve, nil
+
+	return VectorExpr{List: vals}, nil
 }

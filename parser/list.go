@@ -2,9 +2,9 @@ package parser
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
-	"github.com/spy16/parens/lexer"
 	"github.com/spy16/parens/reflection"
 )
 
@@ -68,27 +68,32 @@ func (le ListExpr) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(reprs, " "))
 }
 
-func buildListExpr(tokens *tokenQueue) (Expr, error) {
-	le := ListExpr{}
+func buildListExpr(rd io.RuneScanner) (Expr, error) {
+	if err := assertPrefix(rd, '('); err != nil {
+		return nil, err
+	}
+	lst := []Expr{}
 
 	for {
-		next := tokens.Token(0)
-		if next == nil {
-			return nil, ErrEOF
-		}
-
-		if next.Type == lexer.RPAREN {
-			break
-		}
-
-		exp, err := buildExpr(tokens)
+		ru, _, err := rd.ReadRune()
 		if err != nil {
 			return nil, err
 		}
 
-		le.List = append(le.List, exp)
+		if ru == ')' {
+			break
+		}
+
+		rd.UnreadRune()
+
+		expr, err := buildExpr(rd)
+		if err != nil {
+			return nil, err
+		}
+		if expr != nil {
+			lst = append(lst, expr)
+		}
 	}
 
-	tokens.Pop()
-	return le, nil
+	return ListExpr{List: lst}, nil
 }
