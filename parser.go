@@ -85,7 +85,7 @@ type Expr interface {
 // Scope is responsible for managing bindings.
 type Scope interface {
 	Get(name string) (interface{}, error)
-	Bind(name string, v interface{}, doc ...string) error
+	Bind(name string, v interface{}, doc ...string) Scope
 	Root() Scope
 }
 
