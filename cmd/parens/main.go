@@ -17,8 +17,8 @@ func main() {
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	scope := makeGlobalScope()
-	scope.Bind("exit", cancel)
+	scope := makeGlobalScope().
+		Bind("exit", cancel)
 
 	if len(strings.TrimSpace(src)) > 0 {
 		execString(src, scope)

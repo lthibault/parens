@@ -4,7 +4,7 @@ import "github.com/spy16/parens"
 
 // RegisterAll registers different built-in functions into the
 // given scope.
-func RegisterAll(scope parens.Scope) error {
+func RegisterAll(scope parens.Scope) parens.Scope {
 	return doUntilErr(scope,
 		RegisterCore,
 		RegisterMath,
@@ -14,18 +14,18 @@ func RegisterAll(scope parens.Scope) error {
 }
 
 // RegisterSystem binds system functions into the scope.
-func RegisterSystem(scope parens.Scope) error {
+func RegisterSystem(scope parens.Scope) parens.Scope {
 	return registerList(scope, system)
 }
 
 // RegisterIO binds input/output functions into the scope.
-func RegisterIO(scope parens.Scope) error {
+func RegisterIO(scope parens.Scope) parens.Scope {
 	return registerList(scope, io)
 }
 
 // RegisterCore binds all the core macros and functions into
 // the scope.
-func RegisterCore(scope parens.Scope) error {
+func RegisterCore(scope parens.Scope) parens.Scope {
 	scope.Bind("eval", Eval(scope),
 		"Executes given LISP string in the current scope",
 		"Usage: (eval <form>)",
@@ -40,28 +40,24 @@ func RegisterCore(scope parens.Scope) error {
 }
 
 // RegisterMath binds basic math operators into the scope.
-func RegisterMath(scope parens.Scope) error {
+func RegisterMath(scope parens.Scope) parens.Scope {
 	return registerList(scope, math)
 }
 
-func doUntilErr(scope parens.Scope, fns ...func(scope parens.Scope) error) error {
+func doUntilErr(scope parens.Scope, fns ...func(scope parens.Scope) parens.Scope) parens.Scope {
 	for _, fn := range fns {
-		if err := fn(scope); err != nil {
-			return err
-		}
+		scope = fn(scope)
 	}
 
-	return nil
+	return scope
 }
 
-func registerList(scope parens.Scope, entries []mapEntry) error {
+func registerList(scope parens.Scope, entries []mapEntry) parens.Scope {
 	for _, entry := range entries {
-		if err := scope.Bind(entry.name, entry.val, entry.doc...); err != nil {
-			return err
-		}
+		scope = scope.Bind(entry.name, entry.val, entry.doc...)
 	}
 
-	return nil
+	return scope
 }
 
 func entry(name string, val interface{}, doc ...string) mapEntry {

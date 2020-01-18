@@ -8,23 +8,18 @@ import (
 // NewScope initializes a new scope with given parent scope. parent
 // can be nil.
 func NewScope(parent Scope) Scope {
-	return &defaultScope{
+	return defaultScope{
 		parent: parent,
-		vals:   map[string]scopeEntry{},
+		vals:   newPersistentScope([]PersistentScopeItem{}),
 	}
 }
 
 type defaultScope struct {
 	parent Scope
-	vals   map[string]scopeEntry
+	vals   *persistentScope
 }
 
-type scopeEntry struct {
-	val reflectVal
-	doc string
-}
-
-func (sc *defaultScope) Root() Scope {
+func (sc defaultScope) Root() Scope {
 	if sc.parent == nil {
 		return sc
 	}
@@ -32,18 +27,18 @@ func (sc *defaultScope) Root() Scope {
 	return sc.parent.Root()
 }
 
-func (sc *defaultScope) Bind(name string, v interface{}, doc ...string) error {
-	val := newValue(v)
-	sc.vals[name] = scopeEntry{
-		val: val,
-		doc: strings.TrimSpace(strings.Join(doc, "\n")),
+func (sc defaultScope) Bind(name string, v interface{}, doc ...string) Scope {
+	return defaultScope{
+		parent: sc.parent,
+		vals: sc.vals.Store(name, scopeEntry{
+			val: newValue(v),
+			doc: strings.TrimSpace(strings.Join(doc, "\n")),
+		}),
 	}
-
-	return nil
 }
 
-func (sc *defaultScope) Doc(name string) string {
-	if entry := sc.entry(name); entry != nil {
+func (sc defaultScope) Doc(name string) string {
+	if entry, found := sc.entry(name); found {
 		return entry.doc
 	}
 
@@ -56,9 +51,9 @@ func (sc *defaultScope) Doc(name string) string {
 	return ""
 }
 
-func (sc *defaultScope) Get(name string) (interface{}, error) {
-	entry := sc.entry(name)
-	if entry == nil {
+func (sc defaultScope) Get(name string) (interface{}, error) {
+	entry, found := sc.entry(name)
+	if !found {
 		if sc.parent != nil {
 			return sc.parent.Get(name)
 		}
@@ -68,21 +63,27 @@ func (sc *defaultScope) Get(name string) (interface{}, error) {
 	return entry.val.RVal.Interface(), nil
 }
 
-func (sc *defaultScope) String() string {
+func (sc defaultScope) String() string {
 	str := []string{}
-	for name := range sc.vals {
+	sc.vals.Range(func(name string, _ scopeEntry) bool {
 		str = append(str, fmt.Sprintf("%s", name))
-	}
+		return true
+	})
 	return strings.Join(str, "\n")
 }
 
-func (sc *defaultScope) entry(name string) *scopeEntry {
-	entry, found := sc.vals[name]
-	if found {
-		return &entry
+func (sc defaultScope) entry(name string) (entry scopeEntry, found bool) {
+	var v interface{}
+	if v, found = sc.vals.Load(name); found {
+		entry = v.(scopeEntry)
 	}
 
-	return nil
+	return
+}
+
+type scopeEntry struct {
+	val reflectVal
+	doc string
 }
 
 type scopeWithDoc interface {

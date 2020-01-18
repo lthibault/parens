@@ -26,20 +26,15 @@ https://github.com/spy16/parens
 `
 
 func makeGlobalScope() parens.Scope {
-	scope := parens.NewScope(nil)
-	scope.Bind("parens-version", version)
-
-	scope.Bind("?", func() string {
-		return help
-	})
 
 	// user-defined values can be exposed too and their methods
 	// can be accessed.
 	st := &sampleType{val: "initial"}
-	scope.Bind("sample", st)
 
-	stdlib.RegisterAll(scope)
-	return scope
+	return stdlib.RegisterAll(parens.NewScope(nil)).
+		Bind("parens-version", version).
+		Bind("?", func() string { return help }).
+		Bind("sample", st)
 }
 
 type sampleType struct {
